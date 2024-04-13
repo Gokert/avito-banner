@@ -82,7 +82,7 @@ func GetAuthPsxConfig() (*DbPsxConfig, error) {
 	return cfg, nil
 }
 
-func GetMarketPsxConfig() (*DbPsxConfig, error) {
+func GetBannerPsxConfig() (*DbPsxConfig, error) {
 	v := viper.GetViper()
 	v.AutomaticEnv()
 

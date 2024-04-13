@@ -3,8 +3,8 @@ package main
 import (
 	"avito-banner/configs"
 	"avito-banner/configs/logger"
-	delivery "avito-banner/services/announcement/delivery/http"
-	"avito-banner/services/announcement/usecase"
+	delivery "avito-banner/services/banner/delivery/http"
+	"avito-banner/services/banner/usecase"
 	"os"
 	"sync"
 )
@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	psxCfg, err := configs.GetMarketPsxConfig()
+	psxCfg, err := configs.GetBannerPsxConfig()
 	if err != nil {
 		log.Errorf("Create psx config error: %s", err.Error())
 		return

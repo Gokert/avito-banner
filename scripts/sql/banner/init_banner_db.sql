@@ -1,10 +1,43 @@
--- DROP TABLE IF EXISTS announcement CASCADE;
--- CREATE TABLE IF NOT EXISTS announcement (
---                                             id SERIAL NOT NULL PRIMARY KEY,
---                                             id_profile SERIAL NOT NULL,
---                                             header TEXT NOT NULL DEFAULT '',
---                                             photo_href TEXT NOT NULL DEFAULT '',
---                                             info TEXT NOT NULL DEFAULT '',
---                                             date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
---                                             cost int NOT NULL DEFAULT 0
--- );
+DROP TABLE IF EXISTS features CASCADE;
+CREATE TABLE IF NOT EXISTS features (
+                                        id SERIAL PRIMARY KEY,
+                                        name TEXT NOT NULL UNIQUE
+);
+
+DROP TABLE IF EXISTS tags CASCADE;
+CREATE TABLE IF NOT EXISTS tags (
+                                    id SERIAL PRIMARY KEY,
+                                    name TEXT NOT NULL UNIQUE
+);
+
+DROP TABLE IF EXISTS banners CASCADE;
+CREATE TABLE IF NOT EXISTS banners (
+                                       id SERIAL NOT NULL PRIMARY KEY,
+                                       id_feature SERIAL NOT NULL,
+                                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       title TEXT DEFAULT '',
+                                       text TEXT DEFAULT '',
+                                       url  TEXT DEFAULT '',
+                                       is_active boolean DEFAULT true,
+                                       FOREIGN KEY (id_feature) REFERENCES features(id)
+    );
+
+CREATE TABLE IF NOT EXISTS banner_tags (
+   id_tag SERIAL NOT NULL,
+   id_banner SERIAL NOT NULL,
+   PRIMARY KEY (id_banner, id_tag),
+    UNIQUE (id_banner, id_tag),
+    FOREIGN KEY (id_banner) REFERENCES banners(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_tag) REFERENCES tags(id) ON DELETE CASCADE,
+    );
+
+
+DROP TABLE IF EXISTS profile_tags CASCADE;
+CREATE TABLE IF NOT EXISTS profile_tags (
+    id_tag SERIAL NOT NULL,
+    id_profile SERIAL NOT NULL,
+    PRIMARY KEY (id_profile, id_tag),
+    UNIQUE (id_profile, id_tag),
+    FOREIGN KEY (id_tag) REFERENCES tags(id)
+    );
