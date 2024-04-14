@@ -44,14 +44,15 @@ func (a *Api) ListenAndServe(port string) error {
 }
 
 func (a *Api) Signin(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
 	var request models.SigninRequest
+	timeNow := time.Now()
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		a.log.Error("Read all error: ", err.Error())
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -59,7 +60,7 @@ func (a *Api) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Error("Unmarshal error: ", err.Error())
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -67,13 +68,13 @@ func (a *Api) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Error("Find user account error: ", err.Error())
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
 	if !found {
 		response.Status = http.StatusNotFound
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -87,24 +88,25 @@ func (a *Api) Signin(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, timeNow, a.log)
 }
 
 func (a *Api) Signup(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
 	var request models.SignupRequest
+	timeNow := time.Now()
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
 	err = json.Unmarshal(body, &request)
 	if err != nil {
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -112,13 +114,13 @@ func (a *Api) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Errorf("Find user by login error: %s", err.Error())
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
 	if found {
 		response.Status = http.StatusConflict
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -126,38 +128,40 @@ func (a *Api) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Error("Create user error: ", err.Error())
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, timeNow, a.log)
 }
 
 func (a *Api) Logout(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
+	timeNow := time.Now()
 
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
 	err = a.core.KillSession(r.Context(), cookie.Value)
 	if err != nil {
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
 	cookie.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, cookie)
 
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, timeNow, a.log)
 }
 
 func (a *Api) AuthAccept(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
+	timeNow := time.Now()
 	var authorized bool
 
 	session, err := r.Cookie("session_id")
@@ -167,7 +171,7 @@ func (a *Api) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	if !authorized {
 		response.Status = http.StatusUnauthorized
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -175,7 +179,7 @@ func (a *Api) AuthAccept(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Errorf("Get user name error: %s", err.Error())
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
 
@@ -183,5 +187,5 @@ func (a *Api) AuthAccept(w http.ResponseWriter, r *http.Request) {
 		Login: login,
 	}
 
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, timeNow, a.log)
 }

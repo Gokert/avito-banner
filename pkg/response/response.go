@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func SendResponse(w http.ResponseWriter, r *http.Request, response *models.Response, log *logrus.Logger) {
+func SendResponse(w http.ResponseWriter, r *http.Request, response *models.Response, firstTime time.Time, log *logrus.Logger) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		log.Error("Send response error: ", err)
@@ -16,8 +16,10 @@ func SendResponse(w http.ResponseWriter, r *http.Request, response *models.Respo
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	timeNow := time.Now()
+	responseTime := timeNow.Sub(firstTime)
 
-	log.Infof("Time: %v, Address: %s, Method: %s, Status: %d, URL: %s", time.Now(), r.RemoteAddr, r.Method, response.Status, r.URL.Path)
+	log.Infof("Time: %v, Response time: %v, Address: %s, Method: %s, Status: %d, URL: %s", timeNow, responseTime, r.RemoteAddr, r.Method, response.Status, r.URL.Path)
 
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(jsonResponse)
