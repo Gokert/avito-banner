@@ -51,7 +51,7 @@ func GetPsxRepo(config *configs.DbPsxConfig, logger *logrus.Logger) (*Repository
 	return repo, nil
 }
 
-func (r *Repository) pingDb(timer uint32, logger *logrus.Logger) error {
+func (r *Repository) pingDb(timer uint32, log *logrus.Logger) error {
 	var err error
 	var retries int
 
@@ -62,7 +62,7 @@ func (r *Repository) pingDb(timer uint32, logger *logrus.Logger) error {
 		}
 
 		retries++
-		logger.Error("sql ping error: %s", err.Error())
+		log.Errorf("sql ping error: %s", err.Error())
 		time.Sleep(time.Duration(timer) * time.Second)
 	}
 

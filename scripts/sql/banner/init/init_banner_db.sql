@@ -15,10 +15,17 @@ CREATE TABLE IF NOT EXISTS banners (
    id SERIAL NOT NULL PRIMARY KEY,
    id_feature INT NOT NULL,
    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-   content jsonb DEFAULT '{}'::jsonb,
    is_active boolean DEFAULT true,
    FOREIGN KEY (id_feature) REFERENCES features(id)
+);
+
+DROP TABLE IF EXISTS versions CASCADE;
+CREATE TABLE IF NOT EXISTS versions (
+   id SERIAL NOT NULL PRIMARY KEY,
+   id_banner INT NOT NULL,
+   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   content jsonb DEFAULT '{}'::jsonb,
+   FOREIGN KEY (id_banner) REFERENCES banners(id)
 );
 
 CREATE TABLE IF NOT EXISTS banner_tags (
