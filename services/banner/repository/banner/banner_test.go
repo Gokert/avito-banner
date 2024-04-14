@@ -1,6 +1,7 @@
 package banner_repo
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestGetUserBanner(t *testing.T) {
 		WillReturnError(errors.New("database error"))
 
 	_, err = r.GetUserBanner(tagId, featureId)
-	assert.True(t, true)
+	assert.True(t, !errors.Is(err, sql.ErrNoRows))
 
 	assert.Nil(t, mock.ExpectationsWereMet())
 }
