@@ -175,8 +175,6 @@ func (r *Repository) CreateBanner(banner *models.BannerRequest) error {
 		return fmt.Errorf("insert into banner error: %s", err.Error())
 	}
 
-	fmt.Println(banner.TagIds)
-
 	for _, tagId := range banner.TagIds {
 		_, err = tx.Exec("INSERT INTO banner_tags(id_tag, id_banner) VALUES ($1, $2)", tagId, banner.BannerId)
 		if err != nil {

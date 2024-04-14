@@ -31,7 +31,22 @@ make up
 ![img_2.png](img_readme/img_2.png)
 
 ## Сервис баннеров
-### Получение баннера для пользователя.
-#### POST /api/v1/user_banner 
-Получение баннера для юзера<br/>
-![img_1.png](img_readme/img_1.png)
+### Получение баннеров.
+#### GET /api/v1/banner 
+Получение баннеров<br/>
+![img_4.png](img_readme/img_4.png)
+
+### Создание нового баннера.
+#### POST /api/v1/banner
+Создание баннера<br/>
+![img_5.png](img_readme/img_5.png)
+
+### Изменение баннера.
+#### PATCH /api/v1/banner/{id}
+Изменение баннера<br/>
+![img_6.png](img_readme/img_6.png)
+
+### Удаление баннера.
+#### DELETE /api/v1/banner/{id}
+Удаление баннера<br/>
+![img_7.png](img_readme/img_7.png)
