@@ -16,9 +16,7 @@ CREATE TABLE IF NOT EXISTS banners (
                                        id_feature SERIAL NOT NULL,
                                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                       title TEXT DEFAULT '',
-                                       text TEXT DEFAULT '',
-                                       url  TEXT DEFAULT '',
+                                       content jsonb DEFAULT '{}'::jsonb,
                                        is_active boolean DEFAULT true,
                                        FOREIGN KEY (id_feature) REFERENCES features(id)
     );
@@ -35,9 +33,9 @@ CREATE TABLE IF NOT EXISTS banner_tags (
 
 DROP TABLE IF EXISTS profile_tags CASCADE;
 CREATE TABLE IF NOT EXISTS profile_tags (
-    id_tag SERIAL NOT NULL,
-    id_profile SERIAL NOT NULL,
-    PRIMARY KEY (id_profile, id_tag),
+                                            id_tag SERIAL NOT NULL,
+                                            id_profile SERIAL NOT NULL,
+                                            PRIMARY KEY (id_profile, id_tag),
     UNIQUE (id_profile, id_tag),
     FOREIGN KEY (id_tag) REFERENCES tags(id)
     );

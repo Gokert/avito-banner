@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	utils "avito-banner/pkg"
 	"avito-banner/pkg/middleware"
 	"avito-banner/pkg/models"
 	httpResponse "avito-banner/pkg/response"
@@ -25,9 +26,9 @@ func GetApi(core *usecase.Core, log *logrus.Logger) *Api {
 		mx:   http.NewServeMux(),
 	}
 
-	api.mx.Handle("/user_banner", middleware.AuthCheck(middleware.MethodCheck(http.HandlerFunc(api.GetUserBanner), http.MethodGet, log), core, log))
-	api.mx.Handle("/banner", middleware.AuthCheck(http.HandlerFunc(api.GetOrCreateBanner), core, log))
-	api.mx.Handle("/banner/", middleware.AuthCheck(http.HandlerFunc(api.EditOrDeleteBanner), core, log))
+	api.mx.Handle("/api/v1/user_banner", middleware.AuthCheck(middleware.MethodCheck(http.HandlerFunc(api.GetUserBanner), http.MethodGet, log), core, log))
+	api.mx.Handle("/api/v1/banner", middleware.AuthCheck(middleware.CheckRole(http.HandlerFunc(api.GetOrCreateBanner), core, log), core, log))
+	api.mx.Handle("/api/v1/banner/", middleware.AuthCheck(middleware.CheckRole(http.HandlerFunc(api.EditOrDeleteBanner), core, log), core, log))
 
 	return api
 }
@@ -43,19 +44,21 @@ func (a *Api) ListenAndServe(port string) error {
 }
 
 func (a *Api) GetUserBanner(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
 
 	tagId, err := strconv.ParseUint(r.URL.Query().Get("tag_id"), 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		response.Body = models.Error{Message: "no have tag_id query param"}
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
 	featureId, err := strconv.ParseUint(r.URL.Query().Get("feature_id"), 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		response.Body = models.Error{Message: "no have feature_id query param"}
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
@@ -63,17 +66,18 @@ func (a *Api) GetUserBanner(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Errorf("Get user banner error: %s", err.Error())
 		response.Status = http.StatusInternalServerError
-		httpResponse.SendResponse(w, r, &response, a.log)
+		response.Body = models.Error{Message: "server error"}
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
 	response.Body = banner
 
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, a.log)
 }
 
 func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
 
 	if http.MethodGet == r.Method {
 		tagIdStr := r.URL.Query().Get("tag_id")
@@ -83,7 +87,8 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 		tagId, err := strconv.ParseUint(tagIdStr, 10, 64)
 		if err != nil {
 			response.Status = http.StatusBadRequest
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "parse tag id error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
@@ -94,30 +99,32 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 		featureId, err := strconv.ParseUint(featureIdStr, 10, 64)
 		if err != nil {
 			response.Status = http.StatusBadRequest
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "parse feature id error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		offset, err := strconv.ParseUint(r.URL.Query().Get("offset"), 10, 64)
 		if err != nil {
-			offset = 0
+			offset = utils.DefaultOffset
 		}
 
 		limit, err := strconv.ParseUint(r.URL.Query().Get("limit"), 10, 64)
 		if err != nil {
-			limit = 8
+			limit = utils.DefaultLimit
 		}
 
 		banners, err := a.core.GetBanners(tagId, featureId, offset, limit)
 		if err != nil {
 			a.log.Errorf("Get banners error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "server error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		response.Body = banners
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
@@ -127,14 +134,16 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			response.Status = http.StatusBadRequest
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "read body error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		err = json.Unmarshal(body, &banner)
 		if err != nil {
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "json unmarshal error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
@@ -142,27 +151,29 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			a.log.Errorf("Create banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "server error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		response.Status = http.StatusCreated
 
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
 	response.Status = http.StatusMethodNotAllowed
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, a.log)
 }
 
 func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
-	response := models.Response{Status: http.StatusOK, Body: nil}
+	response := &models.Response{Status: http.StatusOK, Body: nil}
 
-	bannerId, err := strconv.ParseUint(r.URL.Path[len("/banner/"):], 10, 64)
+	bannerId, err := strconv.ParseUint(r.URL.Path[len("/api/v1/banner/"):], 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		httpResponse.SendResponse(w, r, &response, a.log)
+		response.Body = models.Error{Message: "id query param error"}
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
@@ -172,14 +183,16 @@ func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			response.Status = http.StatusBadRequest
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "read body error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		err = json.Unmarshal(body, &banner)
 		if err != nil {
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "json unmarshal error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
@@ -188,17 +201,18 @@ func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			a.log.Errorf("Update banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "server error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		if !res {
 			response.Status = http.StatusNotFound
-			httpResponse.SendResponse(w, r, &response, a.log)
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
@@ -207,20 +221,21 @@ func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			a.log.Errorf("Delete banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
-			httpResponse.SendResponse(w, r, &response, a.log)
+			response.Body = models.Error{Message: "server error"}
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
 		if !res {
 			response.Status = http.StatusNotFound
-			httpResponse.SendResponse(w, r, &response, a.log)
+			httpResponse.SendResponse(w, r, response, a.log)
 			return
 		}
 
-		httpResponse.SendResponse(w, r, &response, a.log)
+		httpResponse.SendResponse(w, r, response, a.log)
 		return
 	}
 
 	response.Status = http.StatusMethodNotAllowed
-	httpResponse.SendResponse(w, r, &response, a.log)
+	httpResponse.SendResponse(w, r, response, a.log)
 }

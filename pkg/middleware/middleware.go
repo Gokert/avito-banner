@@ -74,7 +74,7 @@ func CheckRole(next http.Handler, core Core, lg *logrus.Logger) http.Handler {
 		}
 
 		if result != "admin" {
-			response := models.Response{Status: http.StatusConflict, Body: nil}
+			response := models.Response{Status: http.StatusForbidden, Body: nil}
 			httpResponse.SendResponse(w, r, &response, lg)
 			return
 		}

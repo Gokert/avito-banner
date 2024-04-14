@@ -103,6 +103,11 @@ func SaveImage(photo *multipart.File, handler *multipart.FileHeader, pathSave st
 }
 
 const (
+	DefaultOffset = 0
+	DefaultLimit  = 10
+)
+
+const (
 	InvalidEmailOrPasswordError     = "Invalid email or password"
 	SessionRepositoryNotActiveError = "Session repository not active"
 	ProfileRepositoryNotActiveError = "Profile repository not active"
