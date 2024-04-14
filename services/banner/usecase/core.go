@@ -43,7 +43,7 @@ func GetClient(address string) (auth.AuthorizationClient, error) {
 }
 
 func GetCore(grpcCfg *configs.GrpcConfig, psxCfg *configs.DbPsxConfig, log *logrus.Logger) (*Core, error) {
-	repo, err := banner_repo.GetPsxRepo(psxCfg)
+	repo, err := banner_repo.GetPsxRepo(psxCfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("get psx error error: %s", err.Error())
 	}

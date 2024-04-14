@@ -33,7 +33,7 @@ type Core struct {
 }
 
 func GetCore(psxCfg *configs.DbPsxConfig, redisCfg *configs.DbRedisCfg, log *logrus.Logger) (*Core, error) {
-	filmRepo, err := profile.GetPsxRepo(psxCfg)
+	filmRepo, err := profile.GetPsxRepo(psxCfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("get psx error: %s", err.Error())
 	}

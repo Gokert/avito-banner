@@ -2,11 +2,14 @@ package profile
 
 import (
 	"avito-banner/configs"
+	utils "avito-banner/pkg"
 	"avito-banner/pkg/models"
 	"database/sql"
 	"errors"
 	"fmt"
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/sirupsen/logrus"
+	"time"
 )
 
 //go:generate mockgen -source=profile_repo.go -destination=../../mocks/repo_mock.go -package=mocks
@@ -22,20 +25,48 @@ type Repository struct {
 	db *sql.DB
 }
 
-func GetPsxRepo(config *configs.DbPsxConfig) (*Repository, error) {
+func GetPsxRepo(config *configs.DbPsxConfig, logger *logrus.Logger) (*Repository, error) {
 	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
 		config.User, config.Dbname, config.Password, config.Host, config.Port, config.Sslmode)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("sql open error: %s", err.Error())
 	}
-	err = db.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("sql ping error: %s", err.Error())
-	}
-	db.SetMaxOpenConns(config.MaxOpenConns)
 
-	return &Repository{db: db}, nil
+	repo := &Repository{db: db}
+
+	errs := make(chan error)
+	go func() {
+		errs <- repo.pingDb(3, logger)
+	}()
+
+	if err := <-errs; err != nil {
+		logger.Error(err.Error())
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(config.MaxOpenConns)
+	logger.Info("Successfully connected to database")
+
+	return repo, nil
+}
+
+func (r *Repository) pingDb(timer uint32, logger *logrus.Logger) error {
+	var err error
+	var retries int
+
+	for retries < utils.MaxRetries {
+		err = r.db.Ping()
+		if err == nil {
+			return nil
+		}
+
+		retries++
+		logger.Error("sql ping error: %s", err.Error())
+		time.Sleep(time.Duration(timer) * time.Second)
+	}
+
+	return fmt.Errorf("sql max pinging error: %s", err.Error())
 }
 
 func (repo *Repository) GetUser(login string, password []byte) (*models.UserItem, bool, error) {

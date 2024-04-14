@@ -40,7 +40,7 @@ func NewServer(l *logrus.Logger) (*authGrpc, error) {
 		return nil, fmt.Errorf("get sessions repo error: %s", err.Error())
 	}
 
-	users, err := profile.GetPsxRepo(config)
+	users, err := profile.GetPsxRepo(config, l)
 	if err != nil {
 		return nil, fmt.Errorf("get psx error: %s", err.Error())
 	}
