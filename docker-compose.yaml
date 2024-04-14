@@ -7,6 +7,21 @@ services:
     networks:
       - net
 
+  bannerapp:
+    build:
+      context: .
+      dockerfile: Dockerfile_banner
+    ports:
+      - "${BANNER_APP_PORT}:${BANNER_APP_PORT}"
+    depends_on:
+      - redis
+      - authpsx
+      - bannerpsx
+    env_file:
+      .env
+    networks:
+      - net
+
   authpsx:
     image: "postgres:latest"
     environment:
@@ -39,28 +54,13 @@ services:
   bannerpsx:
     image: "postgres:latest"
     environment:
+      POSTGRES_DB: ${BANNER_PSX_DBNAME}
       POSTGRES_PASSWORD: ${BANNER_PSX_PASSWORD}
       POSTGRES_USER: ${BANNER_PSX_USER}
-      POSTGRES_DB: ${BANNER_PSX_DBNAME}
     volumes:
       - ./scripts/sql/banner:/docker-entrypoint-initdb.d
     ports:
       - "${BANNER_PSX_DOCKER_PORT}:5432"
-    networks:
-      - net
-
-  bannerapp:
-    build:
-      context: .
-      dockerfile: Dockerfile_banner
-    ports:
-      - "${BANNER_APP_PORT}:${BANNER_APP_PORT}"
-    depends_on:
-      - redis
-      - authpsx
-      - bannerpsx
-    env_file:
-      .env
     networks:
       - net
 
