@@ -75,7 +75,7 @@ func TestGetUser(t *testing.T) {
 		WithArgs("error_user", hashPsw).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	_, found, err = repo.GetUser("error_user", hashPsw)
+	_, _, err = repo.GetUser("error_user", hashPsw)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -258,7 +258,7 @@ func TestGetUserId(t *testing.T) {
 		WithArgs(expect[0].Login).
 		WillReturnError(sql.ErrNoRows)
 
-	id, err = repo.GetUserId(expect[0].Login)
+	_, err = repo.GetUserId(expect[0].Login)
 	if err == nil {
 		t.Errorf("unexpected error: %s", err.Error())
 	}
@@ -268,7 +268,7 @@ func TestGetUserId(t *testing.T) {
 		WithArgs(expect[0].Login).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	id, err = repo.GetUserId(expect[0].Login)
+	_, err = repo.GetUserId(expect[0].Login)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}

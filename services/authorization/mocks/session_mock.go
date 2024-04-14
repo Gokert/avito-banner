@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	models "anncouncement/pkg/models"
+	models "avito-banner/pkg/models"
 	context "context"
 	reflect "reflect"
 

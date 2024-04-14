@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	models "anncouncement/pkg/models"
+	models "avito-banner/pkg/models"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"

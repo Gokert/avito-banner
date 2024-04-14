@@ -1,7 +1,7 @@
 package session
 
 import (
-	"anncouncement/pkg/models"
+	"avito-banner/pkg/models"
 	"context"
 	"github.com/go-redis/redis/v8"
 	"testing"

@@ -106,13 +106,19 @@ func (r *Repository) UpdateBanner(banner *models.BannerRequest) (bool, error) {
 	_, err = tx.Exec("UPDATE banners SET id_feature = $1, content = $2, is_active = $3, updated_at = now() WHERE id = $4",
 		banner.FeatureId, contentJSON, banner.IsActive, banner.BannerId)
 	if err != nil {
-		tx.Rollback()
+		err := tx.Rollback()
+		if err != nil {
+			return false, fmt.Errorf("rollback error: %s", err.Error())
+		}
 		return false, fmt.Errorf("update banner error: %s", err.Error())
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
+		err := tx.Rollback()
+		if err != nil {
+			return false, fmt.Errorf("rollback error: %s", err.Error())
+		}
 		return false, fmt.Errorf("failed to commit transaction: %s", err.Error())
 	}
 
@@ -171,14 +177,21 @@ func (r *Repository) CreateBanner(banner *models.BannerRequest) error {
 
 	err = tx.QueryRow("INSERT INTO banners(id_feature, is_active, content) VALUES ($1, $2, $3) RETURNING id", banner.FeatureId, banner.IsActive, contentJSON).Scan(&banner.BannerId)
 	if err != nil {
-		tx.Rollback()
+		err := tx.Rollback()
+		if err != nil {
+			return fmt.Errorf("rollback error: %s", err.Error())
+		}
+
 		return fmt.Errorf("insert into banner error: %s", err.Error())
 	}
 
 	for _, tagId := range banner.TagIds {
 		_, err = tx.Exec("INSERT INTO banner_tags(id_tag, id_banner) VALUES ($1, $2)", tagId, banner.BannerId)
 		if err != nil {
-			tx.Rollback()
+			err := tx.Rollback()
+			if err != nil {
+				return fmt.Errorf("rollback error: %s", err.Error())
+			}
 			return fmt.Errorf("insert into banner error: %s", err.Error())
 		}
 	}
