@@ -50,6 +50,21 @@ func (mr *MockICoreMockRecorder) CheckBanner(bannerId interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBanner", reflect.TypeOf((*MockICore)(nil).CheckBanner), bannerId)
 }
 
+// CheckFeature mocks base method.
+func (m *MockICore) CheckFeature(featureId uint64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckFeature", featureId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckFeature indicates an expected call of CheckFeature.
+func (mr *MockICoreMockRecorder) CheckFeature(featureId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckFeature", reflect.TypeOf((*MockICore)(nil).CheckFeature), featureId)
+}
+
 // CreateBanner mocks base method.
 func (m *MockICore) CreateBanner(banner *models.BannerRequest) error {
 	m.ctrl.T.Helper()
@@ -110,18 +125,19 @@ func (mr *MockICoreMockRecorder) GetRole(ctx, userId interface{}) *gomock.Call {
 }
 
 // GetUserBanner mocks base method.
-func (m *MockICore) GetUserBanner(tagId, featureId uint64) (*models.UserBanner, error) {
+func (m *MockICore) GetUserBanner(tagId, featureId uint64, lastVersion bool) (*models.UserBanner, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserBanner", tagId, featureId)
+	ret := m.ctrl.Call(m, "GetUserBanner", tagId, featureId, lastVersion)
 	ret0, _ := ret[0].(*models.UserBanner)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetUserBanner indicates an expected call of GetUserBanner.
-func (mr *MockICoreMockRecorder) GetUserBanner(tagId, featureId interface{}) *gomock.Call {
+func (mr *MockICoreMockRecorder) GetUserBanner(tagId, featureId, lastVersion interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBanner", reflect.TypeOf((*MockICore)(nil).GetUserBanner), tagId, featureId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBanner", reflect.TypeOf((*MockICore)(nil).GetUserBanner), tagId, featureId, lastVersion)
 }
 
 // GetUserId mocks base method.

@@ -49,6 +49,21 @@ func (mr *MockIRepositoryMockRecorder) CheckBanner(bannerId interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBanner", reflect.TypeOf((*MockIRepository)(nil).CheckBanner), bannerId)
 }
 
+// CheckFeature mocks base method.
+func (m *MockIRepository) CheckFeature(featureId uint64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckFeature", featureId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckFeature indicates an expected call of CheckFeature.
+func (mr *MockIRepositoryMockRecorder) CheckFeature(featureId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckFeature", reflect.TypeOf((*MockIRepository)(nil).CheckFeature), featureId)
+}
+
 // CreateBanner mocks base method.
 func (m *MockIRepository) CreateBanner(banner *models.BannerRequest) error {
 	m.ctrl.T.Helper()
@@ -94,18 +109,18 @@ func (mr *MockIRepositoryMockRecorder) GetBanners(tagId, featureId, getAllBanner
 }
 
 // GetUserBanner mocks base method.
-func (m *MockIRepository) GetUserBanner(tagId, featureId uint64) (*models.UserBanner, error) {
+func (m *MockIRepository) GetUserBanner(tagId, featureId uint64, lastVersion bool) (*models.UserBanner, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserBanner", tagId, featureId)
+	ret := m.ctrl.Call(m, "GetUserBanner", tagId, featureId, lastVersion)
 	ret0, _ := ret[0].(*models.UserBanner)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserBanner indicates an expected call of GetUserBanner.
-func (mr *MockIRepositoryMockRecorder) GetUserBanner(tagId, featureId interface{}) *gomock.Call {
+func (mr *MockIRepositoryMockRecorder) GetUserBanner(tagId, featureId, lastVersion interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBanner", reflect.TypeOf((*MockIRepository)(nil).GetUserBanner), tagId, featureId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBanner", reflect.TypeOf((*MockIRepository)(nil).GetUserBanner), tagId, featureId, lastVersion)
 }
 
 // UpdateBanner mocks base method.

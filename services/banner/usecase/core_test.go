@@ -18,9 +18,9 @@ func TestGetUserBanner(t *testing.T) {
 	featureId := uint64(2)
 	expectedBanner := &models.UserBanner{Content: "Test Content"}
 
-	mockRepo.EXPECT().GetUserBanner(tagId, featureId).Return(expectedBanner, nil)
+	mockRepo.EXPECT().GetUserBanner(tagId, featureId, false).Return(expectedBanner, nil)
 
-	banner, err := mockRepo.GetUserBanner(tagId, featureId)
+	banner, err := mockRepo.GetUserBanner(tagId, featureId, false)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBanner, banner)
