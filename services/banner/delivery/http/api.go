@@ -28,7 +28,7 @@ func GetApi(core *usecase.Core, log *logrus.Logger) *Api {
 	}
 
 	api.mx.Handle("/api/v1/user_banner", middleware.AuthCheck(middleware.MethodCheck(http.HandlerFunc(api.GetUserBanner), http.MethodGet, log), core, log))
-	api.mx.Handle("/api/v1/banner", middleware.AuthCheck(middleware.CheckRole(http.HandlerFunc(api.GetOrCreateBanner), core, log), core, log))
+	api.mx.Handle("/api/v1/banner", middleware.AuthCheck(middleware.GetRole(http.HandlerFunc(api.GetOrCreateBanner), core, log), core, log))
 	api.mx.Handle("/api/v1/banner/", middleware.AuthCheck(middleware.CheckRole(http.HandlerFunc(api.EditOrDeleteBanner), core, log), core, log))
 
 	return api
@@ -64,11 +64,22 @@ func (a *Api) GetUserBanner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	banner, err := a.core.GetUserBanner(tagId, featureId)
+	lastVersion, err := strconv.ParseBool(r.URL.Query().Get("last_version"))
+	if err != nil {
+		lastVersion = false
+	}
+
+	banner, find, err := a.core.GetUserBanner(tagId, featureId, lastVersion)
 	if err != nil {
 		a.log.Errorf("Get user banner error: %s", err.Error())
 		response.Status = http.StatusInternalServerError
 		response.Body = models.Error{Message: "server error"}
+		httpResponse.SendResponse(w, r, response, timeNow, a.log)
+		return
+	}
+
+	if !find {
+		response.Status = http.StatusNotFound
 		httpResponse.SendResponse(w, r, response, timeNow, a.log)
 		return
 	}
@@ -117,7 +128,12 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 			limit = utils.DefaultLimit
 		}
 
-		banners, err := a.core.GetBanners(tagId, featureId, offset, limit)
+		getAllBanner := false
+		if r.Context().Value(middleware.UserRoleKey) == "admin" {
+			getAllBanner = true
+		}
+
+		banners, err := a.core.GetBanners(tagId, featureId, getAllBanner, offset, limit)
 		if err != nil {
 			a.log.Errorf("Get banners error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
@@ -132,6 +148,12 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if http.MethodPost == r.Method {
+		if r.Context().Value(middleware.UserRoleKey) != "admin" {
+			response.Status = http.StatusForbidden
+			httpResponse.SendResponse(w, r, response, timeNow, a.log)
+			return
+		}
+
 		var banner models.BannerRequest
 
 		body, err := io.ReadAll(r.Body)

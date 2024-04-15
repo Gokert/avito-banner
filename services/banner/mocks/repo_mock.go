@@ -79,18 +79,18 @@ func (mr *MockIRepositoryMockRecorder) DeleteBanner(bannerId interface{}) *gomoc
 }
 
 // GetBanners mocks base method.
-func (m *MockIRepository) GetBanners(tagId, featureId, offset, limit uint64) (*[]models.BannerResponse, error) {
+func (m *MockIRepository) GetBanners(tagId, featureId uint64, getAllBanners bool, offset, limit uint64) (*[]models.BannerResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBanners", tagId, featureId, offset, limit)
+	ret := m.ctrl.Call(m, "GetBanners", tagId, featureId, getAllBanners, offset, limit)
 	ret0, _ := ret[0].(*[]models.BannerResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBanners indicates an expected call of GetBanners.
-func (mr *MockIRepositoryMockRecorder) GetBanners(tagId, featureId, offset, limit interface{}) *gomock.Call {
+func (mr *MockIRepositoryMockRecorder) GetBanners(tagId, featureId, getAllBanners, offset, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBanners", reflect.TypeOf((*MockIRepository)(nil).GetBanners), tagId, featureId, offset, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBanners", reflect.TypeOf((*MockIRepository)(nil).GetBanners), tagId, featureId, getAllBanners, offset, limit)
 }
 
 // GetUserBanner mocks base method.

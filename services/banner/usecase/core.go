@@ -15,12 +15,13 @@ import (
 
 //go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
 type ICore interface {
-	GetUserBanner(tagId uint64, featureId uint64) (*models.UserBanner, error)
-	GetBanners(tagId uint64, featureId uint64, offset uint64, limit uint64) (*[]models.BannerResponse, error)
+	GetUserBanner(tagId uint64, featureId uint64, lastVersion bool) (*models.UserBanner, bool, error)
+	GetBanners(tagId uint64, featureId uint64, getAllBanners bool, offset uint64, limit uint64) (*[]models.BannerResponse, error)
 	CreateBanner(banner *models.BannerRequest) error
 	CheckBanner(bannerId uint64) (bool, error)
 	DeleteBanner(bannerId uint64) (bool, error)
 	UpdateBanner(banner *models.BannerRequest) (bool, error)
+	CheckFeature(featureId uint64) (bool, error)
 
 	GetUserId(ctx context.Context, sid string) (uint64, error)
 	GetRole(ctx context.Context, userId uint64) (string, error)
@@ -63,17 +64,52 @@ func GetCore(grpcCfg *configs.GrpcConfig, psxCfg *configs.DbPsxConfig, log *logr
 	return core, nil
 }
 
-func (c *Core) GetUserBanner(tagId uint64, featureId uint64) (*models.UserBanner, error) {
-	banner, err := c.banner.GetUserBanner(tagId, featureId)
+func (c *Core) CheckFeature(featureId uint64) (bool, error) {
+	find, err := c.banner.CheckFeature(featureId)
 	if err != nil {
-		return nil, fmt.Errorf("get user banner error: %s", err.Error())
+		return false, fmt.Errorf("feature check error: %s", err.Error())
 	}
 
-	return banner, nil
+	if !find {
+		return false, nil
+	}
+
+	return true, nil
 }
 
-func (c *Core) GetBanners(tagId uint64, featureId uint64, offset uint64, limit uint64) (*[]models.BannerResponse, error) {
-	banners, err := c.banner.GetBanners(tagId, featureId, offset, limit)
+func (c *Core) GetUserBanner(tagId uint64, featureId uint64, lastVersion bool) (*models.UserBanner, bool, error) {
+	find, err := c.CheckFeature(featureId)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !find {
+		return nil, false, nil
+	}
+
+	findBanner, err := c.banner.CheckBanner(featureId)
+	if err != nil {
+		return nil, false, fmt.Errorf("check banner error: %s", err.Error())
+	}
+
+	if !findBanner {
+		return nil, false, nil
+	}
+
+	banner, err := c.banner.GetUserBanner(tagId, featureId, lastVersion)
+	if err != nil {
+		return nil, false, fmt.Errorf("get user banner error: %s", err.Error())
+	}
+
+	if banner == nil {
+		return nil, false, nil
+	}
+
+	return banner, true, nil
+}
+
+func (c *Core) GetBanners(tagId uint64, featureId uint64, getAllBanners bool, offset uint64, limit uint64) (*[]models.BannerResponse, error) {
+	banners, err := c.banner.GetBanners(tagId, featureId, getAllBanners, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get banners error: %s", err.Error())
 	}
@@ -109,6 +145,10 @@ func (c *Core) DeleteBanner(bannerId uint64) (bool, error) {
 }
 
 func (c *Core) UpdateBanner(banner *models.BannerRequest) (bool, error) {
+	if banner.FeatureId == 0 || len(banner.TagIds) == 0 {
+		return false, fmt.Errorf("feature id is required")
+	}
+
 	res, err := c.banner.CheckBanner(banner.BannerId)
 	if err != nil {
 		return false, fmt.Errorf("update banner error: %s", err.Error())
@@ -127,6 +167,10 @@ func (c *Core) UpdateBanner(banner *models.BannerRequest) (bool, error) {
 }
 
 func (c *Core) CreateBanner(banner *models.BannerRequest) error {
+	if banner.FeatureId == 0 || len(banner.TagIds) == 0 {
+		return fmt.Errorf("feature id is required")
+	}
+
 	err := c.banner.CreateBanner(banner)
 	if err != nil {
 		return fmt.Errorf("create banner error: %s", err.Error())

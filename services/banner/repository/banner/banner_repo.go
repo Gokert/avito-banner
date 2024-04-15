@@ -4,19 +4,21 @@ import (
 	"avito-banner/configs"
 	utils "avito-banner/pkg"
 	"avito-banner/pkg/models"
+	sql_requests "avito-banner/pkg/sql"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
 //go:generate mockgen -source=banner_repo.go -destination=../../mocks/repo_mock.go -package=mocks
 type IRepository interface {
-	GetUserBanner(tagId uint64, featureId uint64) (*models.UserBanner, error)
-	GetBanners(tagId uint64, featureId uint64, offset uint64, limit uint64) (*[]models.BannerResponse, error)
+	GetUserBanner(tagId uint64, featureId uint64, lastVersion bool) (*models.UserBanner, error)
+	GetBanners(tagId uint64, featureId uint64, getAllBanners bool, offset uint64, limit uint64) (*[]models.BannerResponse, error)
+	CheckFeature(featureId uint64) (bool, error)
 	CreateBanner(banner *models.BannerRequest) error
 	CheckBanner(bannerId uint64) (bool, error)
 	DeleteBanner(bannerId uint64) (bool, error)
@@ -68,13 +70,20 @@ func (r *Repository) pingDb(timer uint32, log *logrus.Logger) error {
 		time.Sleep(time.Duration(timer) * time.Second)
 	}
 
-	return fmt.Errorf("sql max pinging error: %s", err.Error())
+	return fmt.Errorf("sql max pinging error: %s", err)
 }
 
-func (r *Repository) GetUserBanner(tagId uint64, featureId uint64) (*models.UserBanner, error) {
+func (r *Repository) GetUserBanner(tagId uint64, featureId uint64, lastVersion bool) (*models.UserBanner, error) {
 	var banner models.UserBanner
+	var sqlString string
 
-	err := r.db.QueryRow("SELECT content FROM banners JOIN banner_tags on banners.id = banner_tags.id_banner WHERE banner_tags.id_tag = $1 AND banners.id_feature = $2", tagId, featureId).Scan(&banner.Content)
+	if lastVersion {
+		sqlString = sql_requests.GetUserBannerLast
+	} else {
+		sqlString = sql_requests.GetUserBanner
+	}
+
+	err := r.db.QueryRow(sqlString, tagId, featureId).Scan(&banner.Content)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -123,25 +132,64 @@ func (r *Repository) CheckBanner(bannerId uint64) (bool, error) {
 	return true, nil
 }
 
-func (r *Repository) UpdateBanner(banner *models.BannerRequest) (bool, error) {
-	contentJSON, err := json.Marshal(banner.Content)
+func (r *Repository) CheckFeature(featureId uint64) (bool, error) {
+	var id uint64
+
+	err := r.db.QueryRow("SELECT id FROM features WHERE id = $1", featureId).Scan(&id)
 	if err != nil {
-		return false, fmt.Errorf("json marshal error: %s", err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("select id feature error: %s", err.Error())
 	}
 
+	return true, nil
+}
+
+func (r *Repository) UpdateBanner(banner *models.BannerRequest) (bool, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return false, fmt.Errorf("failed to begin transaction: %s", err.Error())
 	}
 
-	_, err = tx.Exec("UPDATE banners SET id_feature = $1, content = $2, is_active = $3, updated_at = now() WHERE id = $4",
-		banner.FeatureId, contentJSON, banner.IsActive, banner.BannerId)
+	_, err = tx.Exec("UPDATE banners SET id_feature = $1 WHERE id = $2", banner.FeatureId, banner.BannerId)
 	if err != nil {
 		err := tx.Rollback()
 		if err != nil {
 			return false, fmt.Errorf("rollback error: %s", err.Error())
 		}
-		return false, fmt.Errorf("update banner error: %s", err.Error())
+		return false, fmt.Errorf("update banner error: %s", err)
+	}
+
+	_, err = tx.Exec("INSERT INTO versions(id_banner, is_active, content) VALUES ($1, $2, $3);",
+		banner.BannerId, banner.IsActive, banner.Content)
+	if err != nil {
+		err := tx.Rollback()
+		if err != nil {
+			return false, fmt.Errorf("rollback error: %s", err.Error())
+		}
+		return false, fmt.Errorf("update banner error: %s", err)
+	}
+
+	_, err = tx.Exec("DELETE FROM banner_tags WHERE id_banner = $1 AND id_tag = ANY($2)", banner.BannerId, pq.Array(banner.TagIds))
+	if err != nil {
+		err := tx.Rollback()
+		if err != nil {
+			return false, fmt.Errorf("rollback error: %s", err.Error())
+		}
+		return false, fmt.Errorf("delete old tags error: %s", err)
+	}
+
+	for _, tagId := range banner.TagIds {
+		_, err = tx.Exec("INSERT INTO banner_tags(id_tag, id_banner) VALUES ($1, $2) ON CONFLICT DO NOTHING", tagId, banner.BannerId)
+		if err != nil {
+			err := tx.Rollback()
+			if err != nil {
+				return false, fmt.Errorf("rollback error: %s", err.Error())
+			}
+			return false, fmt.Errorf("insert tag for banner error: %s", err)
+		}
 	}
 
 	err = tx.Commit()
@@ -150,27 +198,51 @@ func (r *Repository) UpdateBanner(banner *models.BannerRequest) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("rollback error: %s", err.Error())
 		}
-		return false, fmt.Errorf("failed to commit transaction: %s", err.Error())
+		return false, fmt.Errorf("failed to commit transaction: %s", err)
 	}
 
 	return true, nil
 }
 
-func (r *Repository) GetBanners(tagId uint64, featureId uint64, offset uint64, limit uint64) (*[]models.BannerResponse, error) {
+func (r *Repository) GetBanners(tagId uint64, featureId uint64, getAllBanners bool, offset uint64, limit uint64) (*[]models.BannerResponse, error) {
 	var banners []models.BannerResponse
 	var rows *sql.Rows
 	var err error
 
-	if tagId != 0 && featureId != 0 {
-		rows, err = r.db.Query("SELECT id, id_feature, content, is_active, created_at, updated_at FROM banners JOIN banner_tags ON banner_tags.id_banner = banners.id WHERE banner_tags.id_tag = $1 AND banners.id_feature = $2 OFFSET $3 LIMIT $4", tagId, featureId, offset, limit)
-	} else if tagId != 0 {
-		rows, err = r.db.Query("SELECT id, id_feature,  content, is_active, created_at, updated_at FROM banners JOIN banner_tags ON banner_tags.id_banner = banners.id WHERE banner_tags.id_tag = $1 OFFSET $2 LIMIT $3", tagId, offset, limit)
-	} else if featureId != 0 {
-		rows, err = r.db.Query("SELECT id, id_feature,  content, is_active, created_at, updated_at FROM banners WHERE banners.id_feature = $1 OFFSET $2 LIMIT $3", featureId, offset, limit)
-	} else {
-		rows, err = r.db.Query("SELECT id, id_feature,  content, is_active, created_at, updated_at FROM banners OFFSET $1 LIMIT $2", offset, limit)
+	query := ""
+	args := []interface{}{offset, limit}
+
+	switch {
+	case tagId != 0 && featureId != 0:
+		if getAllBanners {
+			query = sql_requests.GetBannersByTagFeature
+		} else {
+			query = sql_requests.GetBannersByTag
+		}
+		args = append([]interface{}{tagId, featureId}, args...)
+	case tagId != 0:
+		if getAllBanners {
+			query = sql_requests.GetAllBannersByTag
+		} else {
+			query = sql_requests.GetBannersByTag
+		}
+		args = append([]interface{}{tagId}, args...)
+	case featureId != 0:
+		if getAllBanners {
+			query = sql_requests.GetAllBannersFeature
+		} else {
+			query = sql_requests.GetBannersFeature
+		}
+		args = append([]interface{}{featureId}, args...)
+	default:
+		if getAllBanners {
+			query = sql_requests.GetAllBanners
+		} else {
+			query = sql_requests.GetBanners
+		}
 	}
 
+	rows, err = r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("select get banners error: %s", err.Error())
 	}
@@ -196,34 +268,38 @@ func (r *Repository) GetBanners(tagId uint64, featureId uint64, offset uint64, l
 }
 
 func (r *Repository) CreateBanner(banner *models.BannerRequest) error {
-	contentJSON, err := json.Marshal(banner.Content)
-	if err != nil {
-		return fmt.Errorf("json marshal error: %s", err.Error())
-	}
-
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %s", err.Error())
 	}
 
-	err = tx.QueryRow("INSERT INTO banners(id_feature, is_active, content) VALUES ($1, $2, $3) RETURNING id", banner.FeatureId, banner.IsActive, contentJSON).Scan(&banner.BannerId)
+	var bannerId uint64
+	err = tx.QueryRow("INSERT INTO banners(id_feature) VALUES ($1) RETURNING id", banner.FeatureId).Scan(&bannerId)
 	if err != nil {
 		err := tx.Rollback()
 		if err != nil {
 			return fmt.Errorf("rollback error: %s", err.Error())
 		}
+		return fmt.Errorf("insert banner error: %s", err)
+	}
 
-		return fmt.Errorf("insert into banner error: %s", err.Error())
+	_, err = tx.Exec("INSERT INTO versions(id_banner, content) VALUES ($1, $2)", bannerId, banner.Content)
+	if err != nil {
+		err := tx.Rollback()
+		if err != nil {
+			return fmt.Errorf("rollback error: %s", err.Error())
+		}
+		return fmt.Errorf("insert version error: %s", err)
 	}
 
 	for _, tagId := range banner.TagIds {
-		_, err = tx.Exec("INSERT INTO banner_tags(id_tag, id_banner) VALUES ($1, $2)", tagId, banner.BannerId)
+		_, err = tx.Exec("INSERT INTO banner_tags(id_tag, id_banner) VALUES ($1, $2)", tagId, bannerId)
 		if err != nil {
 			err := tx.Rollback()
-			if err != nil {
-				return fmt.Errorf("rollback error: %s", err.Error())
+			if err != nil && !errors.Is(err, sql.ErrTxDone) {
+				return fmt.Errorf("insert banner tags error: %s", err.Error())
 			}
-			return fmt.Errorf("insert into banner error: %s", err.Error())
+			return fmt.Errorf("insert tag for banner error: %s", err)
 		}
 	}
 
@@ -245,12 +321,6 @@ func (r *Repository) DeleteBanner(bannerId uint64) (bool, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
 		}
-
-		return false, fmt.Errorf("delete banner error: %s", err.Error())
-	}
-
-	_, err = tx.Exec("DELETE FROM banner_tags WHERE id_banner = $1", bannerId)
-	if err != nil {
 		return false, fmt.Errorf("delete banner error: %s", err.Error())
 	}
 

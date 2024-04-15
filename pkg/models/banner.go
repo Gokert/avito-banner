@@ -2,24 +2,24 @@ package models
 
 import "time"
 
-type Banner struct {
-	Id        uint64   `json:"id"`
-	Url       string   `json:"url"`
-	TagIds    []uint64 `json:"tag_ids"`
-	FeatureId uint64   `json:"feature_id"`
-	Content   string   `json:"content"`
-}
-
 type UserBanner struct {
 	Content string `json:"content"`
 }
 
-type BannerRequest struct {
+type Banner struct {
 	BannerId  uint64            `json:"banner_id"`
 	TagIds    []uint64          `json:"tag_ids"`
 	FeatureId uint64            `json:"feature_id"`
 	Content   map[string]string `json:"content"`
 	IsActive  bool              `json:"is_active"`
+}
+
+type BannerRequest struct {
+	BannerId  uint64   `json:"banner_id"`
+	TagIds    []uint64 `json:"tag_ids"`
+	FeatureId uint64   `json:"feature_id"`
+	Content   string   `json:"content"`
+	IsActive  bool     `json:"is_active"`
 }
 
 type BannerResponse struct {

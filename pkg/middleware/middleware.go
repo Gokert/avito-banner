@@ -13,6 +13,7 @@ import (
 type contextKey string
 
 const UserIDKey contextKey = "userId"
+const UserRoleKey contextKey = "userRole"
 
 type Core interface {
 	GetUserId(ctx context.Context, sid string) (uint64, error)
@@ -56,6 +57,32 @@ func MethodCheck(next http.Handler, method string, lg *logrus.Logger) http.Handl
 			httpResponse.SendResponse(w, r, response, timeNow, lg)
 			return
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func GetRole(next http.Handler, core Core, lg *logrus.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userId, isAuth := r.Context().Value(UserIDKey).(uint64)
+		if !isAuth {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		result, err := core.GetRole(r.Context(), userId)
+		if err != nil {
+			lg.Errorf("auth check error: %s", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if result != "admin" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), UserRoleKey, result))
+
 		next.ServeHTTP(w, r)
 	})
 }
