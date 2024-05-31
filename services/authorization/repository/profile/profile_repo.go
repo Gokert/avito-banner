@@ -4,6 +4,7 @@ import (
 	"avito-banner/configs"
 	utils "avito-banner/pkg"
 	"avito-banner/pkg/models"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,11 +15,11 @@ import (
 
 //go:generate mockgen -source=profile_repo.go -destination=../../mocks/repo_mock.go -package=mocks
 type IRepository interface {
-	GetUser(login string, password []byte) (*models.UserItem, bool, error)
-	FindUser(login string) (bool, error)
-	CreateUser(login string, password []byte) error
-	GetUserId(login string) (uint64, error)
-	GetRole(userId uint64) (string, error)
+	GetUser(ctx context.Context, login string, password []byte) (*models.UserItem, bool, error)
+	FindUser(ctx context.Context, login string) (bool, error)
+	CreateUser(ctx context.Context, login string, password []byte) error
+	GetUserId(ctx context.Context, login string) (uint64, error)
+	GetRole(ctx context.Context, userId uint64) (string, error)
 }
 
 type Repository struct {
@@ -69,10 +70,10 @@ func (r *Repository) pingDb(timer uint32, log *logrus.Logger) error {
 	return fmt.Errorf("sql max pinging error: %s", err.Error())
 }
 
-func (repo *Repository) GetUser(login string, password []byte) (*models.UserItem, bool, error) {
+func (repo *Repository) GetUser(ctx context.Context, login string, password []byte) (*models.UserItem, bool, error) {
 	post := &models.UserItem{}
 
-	err := repo.db.QueryRow("SELECT profile.id, profile.login FROM profile "+
+	err := repo.db.QueryRowContext(ctx, "SELECT profile.id, profile.login FROM profile "+
 		"WHERE profile.login = $1 AND profile.password = $2 ", login, password).Scan(&post.Id, &post.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -84,10 +85,10 @@ func (repo *Repository) GetUser(login string, password []byte) (*models.UserItem
 	return post, true, nil
 }
 
-func (repo *Repository) FindUser(login string) (bool, error) {
+func (repo *Repository) FindUser(ctx context.Context, login string) (bool, error) {
 	post := &models.UserItem{}
 
-	err := repo.db.QueryRow(
+	err := repo.db.QueryRowContext(ctx,
 		"SELECT login FROM profile "+
 			"WHERE login = $1", login).Scan(&post.Login)
 	if err != nil {
@@ -100,9 +101,9 @@ func (repo *Repository) FindUser(login string) (bool, error) {
 	return true, nil
 }
 
-func (repo *Repository) CreateUser(login string, password []byte) error {
+func (repo *Repository) CreateUser(ctx context.Context, login string, password []byte) error {
 	var userID uint64
-	err := repo.db.QueryRow("INSERT INTO profile(login, password) VALUES($1, $2) RETURNING id", login, password).Scan(&userID)
+	err := repo.db.QueryRowContext(ctx, "INSERT INTO profile(login, password) VALUES($1, $2) RETURNING id", login, password).Scan(&userID)
 	if err != nil {
 		return fmt.Errorf("create user error: %s", err.Error())
 	}
@@ -110,10 +111,10 @@ func (repo *Repository) CreateUser(login string, password []byte) error {
 	return nil
 }
 
-func (repo *Repository) GetUserId(login string) (uint64, error) {
+func (repo *Repository) GetUserId(ctx context.Context, login string) (uint64, error) {
 	var userID uint64
 
-	err := repo.db.QueryRow(
+	err := repo.db.QueryRowContext(ctx,
 		"SELECT profile.id FROM profile WHERE profile.login = $1", login).Scan(&userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -125,10 +126,10 @@ func (repo *Repository) GetUserId(login string) (uint64, error) {
 	return userID, nil
 }
 
-func (repo *Repository) GetRole(userId uint64) (string, error) {
+func (repo *Repository) GetRole(ctx context.Context, userId uint64) (string, error) {
 	var roleName string
 
-	err := repo.db.QueryRow("SELECT profile.role FROM profile  WHERE profile.id = $1", userId).Scan(&roleName)
+	err := repo.db.QueryRowContext(ctx, "SELECT profile.role FROM profile  WHERE profile.id = $1", userId).Scan(&roleName)
 	if err != nil {
 		return "", fmt.Errorf("get user role err: %s", err.Error())
 	}

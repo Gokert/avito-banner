@@ -43,5 +43,5 @@ func ValidateImage(filename string) error {
 const (
 	DefaultOffset = 0
 	DefaultLimit  = 10
-	MaxRetries    = 3
+	MaxRetries    = 5
 )
