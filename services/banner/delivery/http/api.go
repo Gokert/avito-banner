@@ -69,7 +69,7 @@ func (a *Api) GetUserBanner(w http.ResponseWriter, r *http.Request) {
 		lastVersion = false
 	}
 
-	banner, find, err := a.core.GetUserBanner(tagId, featureId, lastVersion)
+	banner, find, err := a.core.GetUserBanner(r.Context(), tagId, featureId, lastVersion)
 	if err != nil {
 		a.log.Errorf("Get user banner error: %s", err.Error())
 		response.Status = http.StatusInternalServerError
@@ -133,7 +133,7 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 			getAllBanner = true
 		}
 
-		banners, err := a.core.GetBanners(tagId, featureId, getAllBanner, offset, limit)
+		banners, err := a.core.GetBanners(r.Context(), tagId, featureId, getAllBanner, offset, limit)
 		if err != nil {
 			a.log.Errorf("Get banners error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
@@ -172,7 +172,7 @@ func (a *Api) GetOrCreateBanner(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = a.core.CreateBanner(&banner)
+		err = a.core.CreateBanner(r.Context(), &banner)
 		if err != nil {
 			a.log.Errorf("Create banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
@@ -223,7 +223,7 @@ func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
 		}
 
 		banner.BannerId = bannerId
-		res, err := a.core.UpdateBanner(&banner)
+		res, err := a.core.UpdateBanner(r.Context(), &banner)
 		if err != nil {
 			a.log.Errorf("Update banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
@@ -243,7 +243,7 @@ func (a *Api) EditOrDeleteBanner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if http.MethodDelete == r.Method {
-		res, err := a.core.DeleteBanner(bannerId)
+		res, err := a.core.DeleteBanner(r.Context(), bannerId)
 		if err != nil {
 			a.log.Errorf("Delete banner error: %s", err.Error())
 			response.Status = http.StatusInternalServerError
